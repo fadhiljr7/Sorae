@@ -1,0 +1,241 @@
+//
+//  SoundscapeCards.swift
+//  Sorae
+//
+//  Every way a saved or curated soundscape is shown. All of them read the same
+//  `Soundscape` value, so a curated environment and a mix the user made an hour
+//  ago behave identically everywhere.
+//
+
+import SwiftUI
+
+/// A compact bar chart of the mix. This is a user mix's artwork: it is made of
+/// their own sounds, which is more honest than a stock photograph.
+struct MixSignature: View {
+    let scape: Soundscape
+    var barWidth: CGFloat = 6
+    var height: CGFloat = 34
+    var spacing: CGFloat = 5
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: spacing) {
+            ForEach(scape.levelBars, id: \.channel.id) { bar in
+                Capsule()
+                    .fill(bar.level > 0.001 ? bar.channel.tint : bar.channel.tint.opacity(0.18))
+                    .frame(width: barWidth,
+                           height: max(barWidth, height * (0.2 + 0.8 * bar.level)))
+            }
+        }
+        .frame(height: height, alignment: .bottom)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Wide row used in Library and in Home's "Recent" list.
+struct SoundscapeRow: View {
+    let scape: Soundscape
+    var isCurrent: Bool = false
+    var isFavorite: Bool = false
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Palette.moodSoft(scape.calmScore).opacity(0.45))
+                MixSignature(scape: scape, barWidth: 4, height: 24, spacing: 3.5)
+            }
+            .frame(width: 56, height: 56)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(scape.name)
+                        .font(.soraeTitle(.body))
+                        .foregroundStyle(Palette.ink)
+                    if isFavorite {
+                        Image(systemName: "heart.fill")
+                            .font(.caption2)
+                            .foregroundStyle(Palette.sky)
+                    }
+                }
+                Text(scape.summary)
+                    .font(.footnote)
+                    .foregroundStyle(Palette.inkSoft)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            if isCurrent {
+                Image(systemName: "waveform")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Palette.sky)
+                    .symbolEffect(.variableColor.iterative, options: .repeating)
+            }
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Plays this soundscape")
+    }
+}
+
+/// Square tile used in Home's horizontal "Jump back in" carousel.
+struct SoundscapeTile: View {
+    let scape: Soundscape
+    var isCurrent: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                MixSignature(scape: scape, barWidth: 5, height: 30, spacing: 4)
+                Spacer()
+                Image(systemName: SoraeMood(calm: scape.calmScore).symbol)
+                    .font(.caption)
+                    .foregroundStyle(Palette.mood(scape.calmScore))
+            }
+            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(scape.name)
+                    .font(.soraeTitle(.subheadline))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                Text(scape.summary)
+                    .font(.caption)
+                    .foregroundStyle(Palette.inkSoft)
+                    .lineLimit(1)
+            }
+        }
+        .padding(16)
+        .frame(width: 168, height: 132, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Palette.surface)
+                .shadow(color: Palette.skyDeep.opacity(0.08), radius: 14, y: 6)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(isCurrent ? Palette.sky.opacity(0.5) : .clear, lineWidth: 1.5)
+        )
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The artwork behind every environment surface.
+///
+/// Always `scaledToFill` inside a fixed-ratio frame, so the source image is
+/// cropped and never stretched — which is what lets one 9:16 banner serve a tall
+/// hero, a squarer grid tile and a full-bleed header.
+///
+/// The blur and colour blend below are both off. They existed only to make the
+/// grey placeholder presentable, and the real banners need neither: they are
+/// already lit and graded, and softening them would throw away the thing that
+/// makes them worth having. `.placeholder` keeps the old treatment for any
+/// scene that still has no art of its own.
+struct EnvironmentArtwork: View {
+    var name: String?
+    /// Pulls the image toward Sorae's blue, keeping its own light and shade.
+    var tintStrength: Double = 0
+    /// Depth-of-field softening.
+    var softness: CGFloat = 0
+
+    var body: some View {
+        GeometryReader { proxy in
+            Group {
+                if let name {
+                    Image(name)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    LinearGradient(colors: [Palette.skySoft, Palette.skyMist],
+                                   startPoint: .top, endPoint: .bottom)
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .blur(radius: softness)
+            // Overscan so any blur never reveals a soft edge at the crop.
+            .scaleEffect(softness > 0 ? 1 + softness / 40 : 1)
+            .clipped()
+            .overlay(Palette.skyDeep.opacity(tintStrength).blendMode(.color))
+            .compositingGroup()
+        }
+        .accessibilityHidden(true)
+    }
+
+    /// A scene's banner, falling back to the placeholder — and to the softening
+    /// and colour grade that make the placeholder presentable — when it has
+    /// none of its own.
+    static func forScene(_ name: String?) -> EnvironmentArtwork {
+        guard let name else {
+            return EnvironmentArtwork(name: "ph2", tintStrength: 0.6, softness: 9)
+        }
+        return EnvironmentArtwork(name: name)
+    }
+}
+
+/// Environment card for Explore. `ratio` is height ÷ width, so the same card
+/// serves the tall carousel and the squarer grid.
+struct EnvironmentCard: View {
+    let scape: Soundscape
+    /// Fixed width for carousels; `nil` fills the available width, which is
+    /// what grid columns want.
+    var width: CGFloat?
+    var ratio: CGFloat = 16 / 9
+    /// Drops the caption and trims padding on small cards.
+    var isCompact: Bool = false
+
+    private var height: CGFloat? { width.map { $0 * ratio } }
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            artwork
+            scrim
+            content
+        }
+        .frame(width: width, height: height)
+        .aspectRatio(width == nil ? 1 / ratio : nil, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .shadow(color: Palette.skyDeep.opacity(0.16), radius: 20, y: 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens this environment")
+    }
+
+    private var artwork: some View {
+        EnvironmentArtwork.forScene(scape.artworkName)
+    }
+
+    private var scrim: some View {
+        LinearGradient(
+            colors: [.black.opacity(0), .black.opacity(0.06), .black.opacity(0.32), .black.opacity(0.78)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !isCompact {
+                HStack(spacing: 5) {
+                    ForEach(scape.activeChannels.prefix(4)) { channel in
+                        Image(systemName: channel.symbol)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 24, height: 24)
+                            .background(Circle().fill(.white.opacity(0.22)))
+                    }
+                }
+            }
+            Text(scape.name)
+                .font(.soraeTitle(isCompact ? .headline : .title3))
+                .foregroundStyle(.white)
+                .lineLimit(2)
+            if let caption = scape.caption, !isCompact {
+                Text(caption)
+                    .font(.footnote)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(isCompact ? 14 : 18)
+    }
+}

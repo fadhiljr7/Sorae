@@ -1,0 +1,42 @@
+# ── macOS ───────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# ── Xcode: per-user state ───────────────────────────────────────────
+# Window positions, breakpoints, the last-open file. Never useful to
+# anyone else and a constant source of pointless diffs.
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Keep xcshareddata/ — that is where shared schemes live. If you want
+# `xcodebuild -scheme Sorae` to work for anyone who clones this, tick
+# "Shared" on the scheme in Xcode > Product > Scheme > Manage Schemes.
+
+# ── Xcode: build products ───────────────────────────────────────────
+build/
+DerivedData/
+*.o
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.moved-aside
+
+# ── Swift Package Manager ───────────────────────────────────────────
+.build/
+.swiftpm/
+Packages/
+
+# ── Playgrounds ─────────────────────────────────────────────────────
+timeline.xctimeline
+playground.xcworkspace
+
+# ── Local secrets / signing ─────────────────────────────────────────
+# Nothing here today. If a Config.xcconfig with a team ID or API key is
+# ever added, ignore it and commit a Config.example.xcconfig instead.
+*.mobileprovision
+*.p12
