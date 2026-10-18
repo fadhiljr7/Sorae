@@ -40,3 +40,14 @@ playground.xcworkspace
 # ever added, ignore it and commit a Config.example.xcconfig instead.
 *.mobileprovision
 *.p12
+
+# ── Launch video build (/brag) ──────────────────────────────────────
+# Rendered frames, node_modules, copied system fonts and scratch audio.
+# The finished film, poster and plan in brag-output/ are kept.
+brag-output/work/
+
+# ── Node (stray installs) ───────────────────────────────────────────
+node_modules/
+
+# ── Claude Code: per-user settings ──────────────────────────────────
+.claude/settings.local.json
