@@ -88,6 +88,47 @@ extension OnboardingStep {
     ]
 }
 
+// MARK: - Persistence
+
+/// Remembers that the tour has been seen.
+///
+/// A file rather than `UserDefaults`, and for a specific reason: the preferences
+/// daemon keeps a domain cached in memory and will write it back after the app
+/// has been deleted, so a defaults flag can survive an uninstall and leave a
+/// fresh install with no tour. A file in the app's own container cannot — when
+/// the container goes, it goes.
+///
+/// It survives app *updates*, which is what we want: nobody should be walked
+/// through the app again because they installed a new build.
+nonisolated struct OnboardingRecord {
+
+    private let url: URL
+
+    init(filename: String = "onboarding.v1") {
+        let directory = (try? FileManager.default.url(for: .applicationSupportDirectory,
+                                                      in: .userDomainMask,
+                                                      appropriateFor: nil,
+                                                      create: true))
+            ?? URL.temporaryDirectory
+        url = directory.appendingPathComponent(filename)
+    }
+
+    var hasBeenSeen: Bool {
+        FileManager.default.fileExists(atPath: url.path)
+    }
+
+    func markSeen() {
+        // The date is not read back; it is there so the file explains itself to
+        // anyone who finds it in a container dump.
+        let stamp = ISO8601DateFormatter().string(from: .now)
+        try? Data(stamp.utf8).write(to: url, options: .atomic)
+    }
+
+    func forget() {
+        try? FileManager.default.removeItem(at: url)
+    }
+}
+
 // MARK: - Controller
 
 @MainActor
@@ -98,12 +139,12 @@ final class OnboardingController {
     private(set) var index = 0
 
     let steps: [OnboardingStep]
-    private let defaults: UserDefaults
-    private let seenKey = "onboarding.completed.v1"
+    private let record: OnboardingRecord
 
-    init(steps: [OnboardingStep] = OnboardingStep.script, defaults: UserDefaults = .standard) {
+    init(steps: [OnboardingStep] = OnboardingStep.script,
+         record: OnboardingRecord = OnboardingRecord()) {
         self.steps = steps
-        self.defaults = defaults
+        self.record = record
     }
 
     var step: OnboardingStep? { steps.indices.contains(index) ? steps[index] : nil }
@@ -111,7 +152,7 @@ final class OnboardingController {
     /// "3/7", for the step indicator.
     var counter: String { "\(index + 1)/\(steps.count)" }
 
-    var hasBeenSeen: Bool { defaults.bool(forKey: seenKey) }
+    var hasBeenSeen: Bool { record.hasBeenSeen }
 
     /// Runs the tour if this is the first launch. `force` is for the debug hook.
     func startIfNeeded(force: Bool? = nil) {
@@ -132,6 +173,13 @@ final class OnboardingController {
     }
     #endif
 
+    /// Run the tour again on purpose. Does not un-remember it — asking for the
+    /// tour is not the same as never having seen it.
+    func replay() {
+        index = 0
+        isRunning = true
+    }
+
     func advance() {
         if isLastStep {
             finish()
@@ -144,6 +192,6 @@ final class OnboardingController {
 
     private func finish() {
         isRunning = false
-        defaults.set(true, forKey: seenKey)
+        record.markSeen()
     }
 }

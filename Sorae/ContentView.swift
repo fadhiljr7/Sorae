@@ -15,11 +15,11 @@ struct ContentView: View {
     @Environment(MixerModel.self) private var mixer
     @Environment(AppRouter.self) private var router
     @Environment(SessionActivityController.self) private var sessionActivity
+    @Environment(OnboardingController.self) private var onboarding
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
     @Namespace private var sessionTransition
-    @State private var onboarding = OnboardingController()
 
     var body: some View {
         @Bindable var router = router
@@ -94,6 +94,7 @@ struct ContentView: View {
     ContentView()
         .environment(MixerModel(engine: SimulatedAudioEngine()))
         .environment(SessionActivityController())
+        .environment(OnboardingController())
         .environment(SoundscapeStore())
         .environment(AppRouter())
 }

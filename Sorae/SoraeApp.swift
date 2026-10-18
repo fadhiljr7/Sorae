@@ -16,6 +16,7 @@ struct SoraeApp: App {
     @State private var store = SoundscapeStore()
     @State private var router = AppRouter()
     @State private var sessionActivity = SessionActivityController()
+    @State private var onboarding = OnboardingController()
 
     var body: some Scene {
         WindowGroup {
@@ -24,6 +25,7 @@ struct SoraeApp: App {
                 .environment(store)
                 .environment(router)
                 .environment(sessionActivity)
+                .environment(onboarding)
                 .tint(Palette.sky)
                 .task { sessionActivity.attach(to: mixer) }
                 .task {

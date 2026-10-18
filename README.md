@@ -178,6 +178,11 @@ SIMCTL_CHILD_SORAE_MIX=rain:0.6 xcrun simctl launch booted com.mufiiin.Sorae
 xcrun simctl launch booted com.apple.Preferences   # backgrounds Sorae
 ```
 
+The tour runs once on a fresh install and can be replayed at any time from the `?`
+button on Home. It remembers itself in a file in the app's container rather than in
+`UserDefaults` — the preferences daemon caches a domain in memory and writes it back
+after the app is deleted, which left reinstalls with no tour.
+
 ## Known gaps
 
 Honest list, in rough order of how much they matter.

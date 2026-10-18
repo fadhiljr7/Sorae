@@ -17,6 +17,7 @@ struct HomeView: View {
     @Environment(MixerModel.self) private var mixer
     @Environment(SoundscapeStore.self) private var store
     @Environment(AppRouter.self) private var router
+    @Environment(OnboardingController.self) private var onboarding
 
     var body: some View {
         NavigationStack {
@@ -37,6 +38,15 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) { Wordmark() }
+                ToolbarItem(placement: .topBarTrailing) {
+                    // The only way back into the tour once it has been seen.
+                    Button {
+                        onboarding.replay()
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    .accessibilityLabel("Show me around Sorae again")
+                }
             }
         }
     }
