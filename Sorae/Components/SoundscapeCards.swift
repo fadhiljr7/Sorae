@@ -155,7 +155,10 @@ struct EnvironmentArtwork: View {
             // Overscan so any blur never reveals a soft edge at the crop.
             .scaleEffect(softness > 0 ? 1 + softness / 40 : 1)
             .clipped()
-            .overlay(Palette.skyDeep.opacity(tintStrength).blendMode(.color))
+            // A filled shape rather than a bare `Color`: on a Color, `.opacity` is
+            // ambiguous between Color.opacity and View.opacity once `.blendMode`
+            // follows. Inside `fill` only the ShapeStyle (Color) one applies.
+            .overlay(Rectangle().fill(Palette.skyDeep.opacity(tintStrength)).blendMode(.color))
             .compositingGroup()
         }
         .accessibilityHidden(true)
