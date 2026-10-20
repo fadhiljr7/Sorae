@@ -18,6 +18,7 @@
 import ActivityKit
 import Foundation
 import Observation
+import UIKit
 
 @MainActor
 @Observable
@@ -41,11 +42,19 @@ final class SessionActivityController {
     /// start two activities or end one twice.
     private var work: Task<Void, Never>?
     private var applied: SoraeActivityAttributes.ContentState?
+    private var terminationObserver: NSObjectProtocol?
 
     /// Starts listening to the mixer. The controller drives itself from here on.
     func attach(to mixer: MixerModel) {
         self.mixer = mixer
         mixer.onPlaybackStateChange = { [weak self] in self?.sync() }
+        // Force-quitting from the app switcher stops the audio, so the activity
+        // has to go with it rather than linger over silence.
+        terminationObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willTerminateNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.endImmediately() }
+        }
         sync()
     }
 
@@ -72,7 +81,7 @@ final class SessionActivityController {
         }
     }
 
-    /// Called when the app is going away for good.
+    /// Called when the app is going away for good (see `attach`).
     func endImmediately() {
         work?.cancel()
         let activity = activity
@@ -85,6 +94,13 @@ final class SessionActivityController {
     // MARK: Reconciliation
 
     private func apply(_ snapshot: Snapshot) async {
+        // A Live Activity outlives the process that started it. If the app was
+        // killed while playing (or re-run from Xcode), the old one is still on
+        // the Lock Screen and in the Dynamic Island, and this launch knows
+        // nothing about it — so it would appear every time the app is
+        // minimised, even with nothing playing. Anything that isn't ours goes.
+        await endOrphans()
+
         guard snapshot.isPlaying else {
             await end()
             return
@@ -129,6 +145,12 @@ final class SessionActivityController {
         guard let activity else { return }
         await activity.update(content(for: state))
         applied = state
+    }
+
+    private func endOrphans() async {
+        for orphan in Activity<SoraeActivityAttributes>.activities where orphan.id != activity?.id {
+            await orphan.end(nil, dismissalPolicy: .immediate)
+        }
     }
 
     private func end() async {
