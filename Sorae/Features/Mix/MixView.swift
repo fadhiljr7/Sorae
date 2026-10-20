@@ -19,8 +19,11 @@ struct MixView: View {
     @Environment(MixerModel.self) private var mixer
     @Environment(SoundscapeStore.self) private var store
     @Environment(AppRouter.self) private var router
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var isSaveSheetPresented = false
+
+    private var isLargeText: Bool { dynamicTypeSize.isAccessibilitySize }
 
     var body: some View {
         NavigationStack {
@@ -110,7 +113,12 @@ struct MixView: View {
     // MARK: Sorae + calm state
 
     private var stateCard: some View {
-        HStack(alignment: .center, spacing: 4) {
+        // Side by side normally; stacked at accessibility sizes so the mood
+        // copy gets the card's full width.
+        let layout = isLargeText
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 4))
+        return layout {
             SoraeMascotView(
                 calm: mixer.calmScore,
                 pose: mixer.calmScore > 0.86 ? .resting : .meditating,
@@ -124,6 +132,7 @@ struct MixView: View {
                     Text(mixer.mood.title)
                         .font(.soraeTitle(.subheadline))
                         .foregroundStyle(Palette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(mixer.mood.guidance)
                         .font(.caption)
                         .foregroundStyle(Palette.inkSoft)
@@ -134,6 +143,7 @@ struct MixView: View {
                 CalmMeter(calm: mixer.calmScore, mood: mixer.mood, showsLabel: false)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, isLargeText ? 18 : 0)
         }
         .padding(.trailing, 18)
         .padding(.vertical, 14)
@@ -166,9 +176,10 @@ struct MixView: View {
                 }
             }
 
-            // Up to five channels fit the width; beyond that the desk scrolls,
-            // so adding sounds never breaks the layout.
-            if mixer.channels.count <= 5 {
+            // Up to five channels fit the width; beyond that, or at accessibility
+            // text sizes where five columns would truncate every label, the
+            // desk scrolls with wider faders, so the layout never breaks.
+            if mixer.channels.count <= 5 && !isLargeText {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(mixer.channels) { channel in
                         fader(for: channel)
@@ -179,12 +190,13 @@ struct MixView: View {
                 ScrollView(.horizontal) {
                     HStack(alignment: .top, spacing: 12) {
                         ForEach(mixer.channels) { channel in
-                            fader(for: channel).frame(width: 64)
+                            fader(for: channel).frame(width: isLargeText ? 150 : 64)
                         }
                     }
                     .padding(.horizontal, 2)
                 }
-                .scrollIndicators(.hidden)
+                .scrollIndicators(isLargeText ? .visible : .hidden)
+                .onboardingTarget(.faders)
             }
 
             if !mixer.silentChannels.isEmpty {

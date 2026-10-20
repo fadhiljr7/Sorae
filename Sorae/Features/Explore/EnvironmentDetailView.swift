@@ -20,6 +20,8 @@ struct EnvironmentDetailView: View {
 
     @State private var didCopy = false
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     private var isCurrent: Bool { mixer.loadedSoundscapeID == scape.id }
 
     var body: some View {
@@ -121,7 +123,10 @@ struct EnvironmentDetailView: View {
             }
             .buttonStyle(SoraeButtonStyle(tint: Palette.sky))
 
-            HStack(spacing: 12) {
+            // Side by side normally; stacked at accessibility sizes.
+            (dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(spacing: 12))
+                : AnyLayout(HStackLayout(spacing: 12))) {
                 Button {
                     play()
                     router.selectedTab = .mix

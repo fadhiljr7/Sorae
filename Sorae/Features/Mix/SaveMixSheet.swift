@@ -14,6 +14,7 @@ struct SaveMixSheet: View {
     @Environment(MixerModel.self) private var mixer
     @Environment(SoundscapeStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var name = ""
     @FocusState private var isNameFocused: Bool
@@ -90,7 +91,10 @@ struct SaveMixSheet: View {
 
     private var preview: some View {
         let draft = Soundscape(name: name, levels: mixer.currentLevels)
-        return HStack(spacing: 16) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 16))
+        return layout {
             SoraeMascotView(calm: mixer.calmScore, size: 76, showsAura: true)
 
             MixSignature(scape: draft, barWidth: 7, height: 44, spacing: 6)
@@ -104,7 +108,7 @@ struct SaveMixSheet: View {
                     .font(.caption)
                     .foregroundStyle(Palette.inkSoft)
             }
-            Spacer(minLength: 0)
+            if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

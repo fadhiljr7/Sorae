@@ -14,6 +14,7 @@ struct ExploreView: View {
     @Environment(MixerModel.self) private var mixer
     @Environment(SoundscapeStore.self) private var store
     @Environment(AppRouter.self) private var router
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @Namespace private var cardTransition
     @State private var path = NavigationPath()
@@ -21,7 +22,10 @@ struct ExploreView: View {
     private var featured: Soundscape? { store.curated.first }
     private var rest: [Soundscape] { Array(store.curated.dropFirst()) }
 
-    private let columns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
+    /// Two columns normally; one at accessibility sizes, so card titles have room.
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 16), count: dynamicTypeSize.isAccessibilitySize ? 1 : 2)
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -60,7 +64,7 @@ struct ExploreView: View {
             .navigationTitle("Explore")
             .navigationDestination(for: Soundscape.self) { scape in
                 EnvironmentDetailView(scape: scape)
-                    .navigationTransition(.zoom(sourceID: scape.id, in: cardTransition))
+                    .soraeZoomTransition(sourceID: scape.id, in: cardTransition)
             }
             .onAppear {
                 #if DEBUG
@@ -127,12 +131,13 @@ struct FeaturedEnvironmentCard: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("FEATURED")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.soraeTitle(.caption2))
                     .tracking(1.6)
                     .foregroundStyle(.white.opacity(0.85))
                 Text(scape.name)
                     .font(.soraeDisplay(.title2))
                     .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
                 if let caption = scape.caption {
                     Text(caption)
                         .font(.subheadline)
@@ -142,7 +147,9 @@ struct FeaturedEnvironmentCard: View {
             }
             .padding(20)
         }
-        .frame(height: 290)
+        // A minimum, so the caption is never cut off at large text sizes; the
+        // artwork fills whatever height the text needs.
+        .frame(minHeight: 290)
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         .shadow(color: Palette.skyDeep.opacity(0.18), radius: 22, y: 12)
         .accessibilityElement(children: .combine)

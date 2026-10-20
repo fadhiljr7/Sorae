@@ -72,7 +72,7 @@ struct ContentView: View {
         }
         .fullScreenCover(isPresented: $router.isSessionPresented) {
             SessionView()
-                .navigationTransition(.zoom(sourceID: "session", in: sessionTransition))
+                .soraeZoomTransition(sourceID: "session", in: sessionTransition)
         }
         .environment(\.soraeAmbientMotionEnabled, !reduceMotion)
         // Whether the app is in front is the one thing the controller cannot

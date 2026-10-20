@@ -17,8 +17,13 @@ struct SoraeButtonStyle: ButtonStyle {
         configuration.label
             .font(.soraeTitle(.body))
             .foregroundStyle(isProminent ? Color.white : tint)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity)
-            .frame(height: 54)
+            // A minimum, not a fixed height: at the larger Dynamic Type sizes the
+            // label wraps and the capsule grows with it.
+            .frame(minHeight: 54)
             .background {
                 if isProminent {
                     Capsule().fill(

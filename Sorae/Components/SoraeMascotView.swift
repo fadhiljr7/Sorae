@@ -69,6 +69,7 @@ struct SoraeMascotView: View {
     private static let overwhelmBelow = 0.10
     private static let recoverAbove = 0.16
     private static let swapDuration = 0.55
+    private var swapScale: CGFloat { motionEnabled ? 0.94 : 1 }
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 60, paused: !motionEnabled)) { timeline in
@@ -111,14 +112,15 @@ struct SoraeMascotView: View {
                 .scaledToFit()
                 .opacity(showsOverwhelmed ? 0 : 1)
                 // The one leaving shrinks a little as it goes, so the swap has a
-                // beat of its own rather than being a flat crossfade.
-                .scaleEffect(showsOverwhelmed ? 0.94 : 1)
+                // beat of its own rather than being a flat crossfade. Under
+                // Reduce Motion it is a plain crossfade.
+                .scaleEffect(showsOverwhelmed ? swapScale : 1)
 
             Image(.overwhelmed)
                 .resizable()
                 .scaledToFit()
                 .opacity(showsOverwhelmed ? 1 : 0)
-                .scaleEffect(showsOverwhelmed ? 1 : 0.94)
+                .scaleEffect(showsOverwhelmed ? 1 : swapScale)
         }
         .animation(.easeInOut(duration: Self.swapDuration), value: showsOverwhelmed)
         .shadow(color: Palette.mood(calm).opacity(0.28), radius: size * 0.09, y: size * 0.03)

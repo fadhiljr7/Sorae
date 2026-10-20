@@ -37,6 +37,9 @@ struct SoundscapeRow: View {
     var isCurrent: Bool = false
     var isFavorite: Bool = false
 
+    @Environment(\.soraeAmbientMotionEnabled) private var motionEnabled
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
@@ -60,7 +63,7 @@ struct SoundscapeRow: View {
                 Text(scape.summary)
                     .font(.footnote)
                     .foregroundStyle(Palette.inkSoft)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             }
 
             Spacer(minLength: 8)
@@ -69,7 +72,7 @@ struct SoundscapeRow: View {
                 Image(systemName: "waveform")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Palette.sky)
-                    .symbolEffect(.variableColor.iterative, options: .repeating)
+                    .symbolEffect(.variableColor.iterative, options: .repeating, isActive: motionEnabled)
             }
         }
         .padding(.vertical, 4)
@@ -84,11 +87,22 @@ struct SoundscapeTile: View {
     let scape: Soundscape
     var isCurrent: Bool = false
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private var isLargeText: Bool { dynamicTypeSize.isAccessibilitySize }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 MixSignature(scape: scape, barWidth: 5, height: 30, spacing: 4)
                 Spacer()
+                // The border alone says "playing" only in colour; the waveform
+                // says it in shape too, as the Saved rows do.
+                if isCurrent {
+                    Image(systemName: "waveform")
+                        .font(.caption)
+                        .foregroundStyle(Palette.sky)
+                        .accessibilityLabel("Now playing")
+                }
                 Image(systemName: SoraeMood(calm: scape.calmScore).symbol)
                     .font(.caption)
                     .foregroundStyle(Palette.mood(scape.calmScore))
@@ -98,15 +112,19 @@ struct SoundscapeTile: View {
                 Text(scape.name)
                     .font(.soraeTitle(.subheadline))
                     .foregroundStyle(Palette.ink)
-                    .lineLimit(1)
+                    .lineLimit(isLargeText ? 3 : 1)
                 Text(scape.summary)
                     .font(.caption)
                     .foregroundStyle(Palette.inkSoft)
-                    .lineLimit(1)
+                    .lineLimit(isLargeText ? 4 : 1)
             }
         }
         .padding(16)
-        .frame(width: 168, height: 132, alignment: .leading)
+        // Fixed at regular sizes so the carousel stays even; at accessibility
+        // sizes the tile widens and grows to fit its text.
+        .frame(width: isLargeText ? 260 : 168, alignment: .leading)
+        .frame(minHeight: 132, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: isLargeText)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(Palette.surface)
@@ -138,6 +156,14 @@ struct EnvironmentArtwork: View {
     /// Depth-of-field softening.
     var softness: CGFloat = 0
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// In Dark Mode the sunlit banners (Summer Breeze, Mountain Stream…) would be
+    /// the brightest thing on screen, large and sudden. Dimming them keeps the
+    /// interface dark for people who are sensitive to light, while the art keeps
+    /// its colour and grade.
+    private var darkModeDim: Double { colorScheme == .dark ? 0.3 : 0 }
+
     var body: some View {
         GeometryReader { proxy in
             Group {
@@ -159,6 +185,7 @@ struct EnvironmentArtwork: View {
             // ambiguous between Color.opacity and View.opacity once `.blendMode`
             // follows. Inside `fill` only the ShapeStyle (Color) one applies.
             .overlay(Rectangle().fill(Palette.skyDeep.opacity(tintStrength)).blendMode(.color))
+            .overlay(Rectangle().fill(Color.black.opacity(darkModeDim)))
             .compositingGroup()
         }
         .accessibilityHidden(true)
@@ -186,7 +213,13 @@ struct EnvironmentCard: View {
     /// Drops the caption and trims padding on small cards.
     var isCompact: Bool = false
 
-    private var height: CGFloat? { width.map { $0 * ratio } }
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private var isLargeText: Bool { dynamicTypeSize.isAccessibilitySize }
+
+    /// Carousel cards widen at accessibility sizes so a name like
+    /// "Mountain Stream" still fits in a couple of lines.
+    private var resolvedWidth: CGFloat? { width.map { isLargeText ? max($0, 280) : $0 } }
+    private var height: CGFloat? { resolvedWidth.map { $0 * ratio } }
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -194,7 +227,7 @@ struct EnvironmentCard: View {
             scrim
             content
         }
-        .frame(width: width, height: height)
+        .frame(width: resolvedWidth, height: height)
         .aspectRatio(width == nil ? 1 / ratio : nil, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .shadow(color: Palette.skyDeep.opacity(0.16), radius: 20, y: 10)
@@ -230,7 +263,7 @@ struct EnvironmentCard: View {
             Text(scape.name)
                 .font(.soraeTitle(isCompact ? .headline : .title3))
                 .foregroundStyle(.white)
-                .lineLimit(2)
+                .lineLimit(isLargeText ? 4 : 2)
             if let caption = scape.caption, !isCompact {
                 Text(caption)
                     .font(.footnote)

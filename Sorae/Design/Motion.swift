@@ -35,3 +35,37 @@ extension EnvironmentValues {
         set { self[AmbientMotionKey.self] = newValue }
     }
 }
+
+// MARK: - Reduce Motion
+
+extension View {
+    /// The zoom from a card or button into a full screen, except under Reduce
+    /// Motion: a full-screen scale is exactly the kind of depth effect that
+    /// setting exists to remove, so the presentation falls back to the
+    /// system's standard transition.
+    func soraeZoomTransition(sourceID: some Hashable, in namespace: Namespace.ID) -> some View {
+        modifier(ZoomUnlessReduced(sourceID: AnyHashable(sourceID), namespace: namespace))
+    }
+}
+
+private struct ZoomUnlessReduced: ViewModifier {
+    let sourceID: AnyHashable
+    let namespace: Namespace.ID
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        if reduceMotion {
+            content
+        } else {
+            content.navigationTransition(.zoom(sourceID: sourceID, in: namespace))
+        }
+    }
+}
+
+extension AnyTransition {
+    /// Grows in slightly while fading. Under Reduce Motion it only fades, so
+    /// the change is still announced without anything changing size.
+    static func soraePop(_ scale: CGFloat, motion: Bool) -> AnyTransition {
+        motion ? .scale(scale: scale).combined(with: .opacity) : .opacity
+    }
+}

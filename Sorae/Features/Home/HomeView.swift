@@ -18,6 +18,8 @@ struct HomeView: View {
     @Environment(SoundscapeStore.self) private var store
     @Environment(AppRouter.self) private var router
     @Environment(OnboardingController.self) private var onboarding
+    @Environment(\.soraeAmbientMotionEnabled) private var motionEnabled
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         NavigationStack {
@@ -103,7 +105,7 @@ struct HomeView: View {
 
             if mixer.isPlaying {
                 nowPlayingChip
-                    .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    .transition(.soraePop(0.9, motion: motionEnabled))
             }
         }
         .frame(maxWidth: .infinity)
@@ -114,10 +116,10 @@ struct HomeView: View {
         HStack(spacing: 8) {
             Image(systemName: "waveform")
                 .font(.caption)
-                .symbolEffect(.variableColor.iterative, options: .repeating)
+                .symbolEffect(.variableColor.iterative, options: .repeating, isActive: motionEnabled)
             Text(mixer.loadedName ?? mixer.summary)
                 .font(.soraeTitle(.footnote))
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
         }
         .foregroundStyle(Palette.skyDeep)
         .padding(.horizontal, 14)
